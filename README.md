@@ -1,7 +1,9 @@
 # Модернизация кошачьего туалета Tonepie
 Проект для ESPHome и Home Assistant
 
-![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/4e8f79ed-e9bd-4044-a7ab-67163ae847cc)
+
+<img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/f67134d9-f40c-4849-a2b1-a66da4c3f1ee" width=50%>
+
 
 ### Описание
 Кошачий туалет Tonepie работает под управлением Tuya, который можно перешить на ESPHome. Мы отвязываем лоток от облачного сервиса Tuya и можем программировать свой лоток так, как считаем нужным
@@ -14,7 +16,9 @@
 
 На борту лотка установлена плата WBR3. Подробнее о WBR3 можете ознакомится [здесь](https://developer.tuya.com/en/docs/iot/wbr3-module-datasheet?id=K9dujs2k5nriy)
 
-![1697068042669](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/d67f6376-0f15-46ec-99c6-4aac71a149f3)
+<img src="" width=30%>
+
+
 
 Перед тем как выпаять чип WBR3, на всякий случай припаяйте два провода к контактам RXD и TXD и поснимайте логи, посмотрите, будут ли у вас работать сенсоры при добавлении компонента [Tuya MCU](https://esphome.io/components/tuya.html#tuya-mcu). Если сенсоры работают то можете продолжать процедуру дальше.
 
@@ -22,6 +26,7 @@
 
 ![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/9a8d9b3a-10f6-4b3c-badb-704981a91678)
 
+<img src="" width=30%>
 
 Чтобы включить режим отладки и выводить в логи пакеты, необходимо добавить в строки следующее. Таким образом можно увидеть пакеты на каждую команду, когда нажимаете на кнопки в приложении Tuya или через панель управления самого лотка
 ```
