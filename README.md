@@ -89,16 +89,18 @@ uart:
 <details>
   <summary><b>Home Assistant</b></summary>
 
+**Для работы карточки необходимо установить компоненты**
+* [History explorer card](https://github.com/alexarch21/history-explorer-card)
+* [Button Card](https://github.com/custom-cards/button-card)
+
+**Карточка**
+* Код карточки можно взять [здесь](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/blob/main/files/Home%20Assistant/ru/Карточка%20управления%20лотком.yaml)
+  
+
+**Скриншоты карточек**
 
 ![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/5991b682-c59c-4b0e-a93a-d3c8bee6533d)
 ![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/f12e2cab-5a63-4f11-9570-3da68a9d743b)
 ![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/2ebac520-c851-456b-9b08-60032c2b1672)
 
-**Для работы карточки необходимо установить компоненты**
-* [History explorer card](https://github.com/alexarch21/history-explorer-card)
-* [Button Card](https://github.com/custom-cards/button-card)
-
-**Карточка и шаблоны**
-* Код карточки можно взять [здесь](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/blob/main/files/Home%20Assistant/ru/Карточка%20управления%20лотком.yaml)
-  
 </details>
