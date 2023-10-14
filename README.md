@@ -1,4 +1,5 @@
 # Модернизация кошачьего туалета Tonepie
+Проект для ESPHome и Home Assistant
 
 ![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/4e8f79ed-e9bd-4044-a7ab-67163ae847cc)
 
