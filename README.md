@@ -97,6 +97,25 @@ uart:
 * Код карточки можно взять [здесь](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/blob/main/files/Home%20Assistant/ru/Карточка%20управления%20лотком.yaml)
   
 
+Код обратного таймера. Это нужно для карточки, чтобы видеть оставшееся время работы ионизатора
+```
+timer:
+  cat_toilet_ionizer_timer:
+    name: "Кошачий лоток. Ионизатор. Таймер"
+    duration: "00:30:00"
+    icon: mdi:creation
+
+- sensor:
+    - name: 'Cat toilet: Ionizer. Remaining Time'
+      unique_id: cat toilet ionizer remaining time
+      state: >
+          {% set f = state_attr('timer.cat_toilet_ionizer_timer', 'finishes_at') %}
+          {{ '00:00:00' if f == None else (as_datetime(f) - now()).total_seconds() | timestamp_custom('%H:%M:%S', false) }}
+      icon: mdi:timer
+```
+
+
+
 **Скриншоты карточек**
 
 ![image](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/5991b682-c59c-4b0e-a93a-d3c8bee6533d)
