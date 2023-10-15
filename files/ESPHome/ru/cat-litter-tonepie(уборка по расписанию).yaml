@@ -100,12 +100,6 @@ tuya:
 #####################################################################################
 ########################### Глобальные переменные ###################################
 globals:
-#Стартовая калибровка лотка после подачи питания или перезагрузки ESP
-#  - id: idCalibrationCompleted
-#    type: bool
-#    restore_value: yes
-#    initial_value: 'false'
-
 #Последняя кормежка по расписанию
   - id: idLastCleaningTimes
     type: int
@@ -612,7 +606,7 @@ binary_sensor:
             #Уборка не запущена
             - if:
                 condition:
-                  #Условие: Уборка не запущена, питомец был в лотке, ионизатор выключен 
+                  #Условие: Уборка не запущена, питомец был в лотке, ионизатор выключен
                   - lambda: 'return id(idCleaning).state == false and id(idPetInsideLastSeen) == true and id(idIonizer).state == false;'
                 then:
                   #Действие: Публикуем в текстовый сенсор статус "Питомец вышел"
@@ -654,7 +648,26 @@ binary_sensor:
                   - text_sensor.template.publish:
                       id: idStatus
                       state: "Уборка запущена"
-
+                  #Дополнительное условие. Ионизатор
+                  - if:
+                      condition:
+                        #Условие: Ионизатор выключен
+                        - lambda: 'return id(idIonizer).state == false;'
+                      then:
+                        #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Питомец в лотке"
+            #Уборка выключена
+            - if:
+                condition:
+                  #Условие: Уборка выключена, ионизатор включен
+                  - lambda: 'return id(idCleaning).state == false and id(idIonizer).state == true;'
+                then:
+                  #Действие: Публикуем в текстовый сенсор статус "Устранение запаха"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Устранение запаха"
 
 #####################################################################################
 ####################################### Число #######################################
