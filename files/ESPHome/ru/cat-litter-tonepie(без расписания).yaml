@@ -682,28 +682,29 @@ script:
 #Настройки по умолчанию после загрузки при условии, что если чувствительность обнаружения не равно 1000
   - id: idStartingScript
     then:
-      #Публикуем в текстовый сенсор статус "Запущена калибровка"
+      #Действие: Публикуем в текстовый сенсор статус "Запущена калибровка"
       - text_sensor.template.publish:
           id: idStatus
           state: "Запущена калибровка"
-      #Калибровка не выполнена
+      #Действие: Выключаем выключатель "Калибровка не выполнена"
       - switch.turn_off: idCalibrationCompleted
-      #Задержка
+      #Действие: Задержка
       - delay: 60s 
       #Если чувствительность обнаружения не равно 1000, то выставляем настройки по умолчанию
       - if:
           condition:
+            #Условие: Автоуборка выключена, чувствительность обнаружения не равно 1000
             - lambda: 'return id(idAutoCleaning).state == false and id(idDetectionSensitivity).state != 1000;'
           then:
-            #Чувствительность обнаружения
+            #Действие: Чувствительность обнаружения
             - number.set:
                 id: idDetectionSensitivity
                 value: 1000
-            #Задержка запуска
+            #Действие: Задержка запуска
             - number.set:
                 id: idLaunchDelay
                 value: 5
-            #Интервал между уборками
+            #Действие: Интервал между уборками
             - number.set:
                 id: idIntervalBetweenCleaning
                 value: 15
@@ -713,45 +714,48 @@ script:
     then:
       - if:
           condition:
-            #Если калибровка не выполнена, время после старта до 180 секунд
-            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state < 180;'
+            #Условие: Калибровка не выполнена
+            - lambda: 'return id(idCalibrationCompleted).state == false;'
           then:
-            #Калибровка выполнена
-            - switch.turn_on: idCalibrationCompleted
-            #Публикуем в текстовый сенсор статус "Калибровка завершена"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Калибровка завершена"
-            #Задержка
-            - delay: 10s
-            #Публикуем в текстовый сенсор статус "Лоток чистый"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Лоток чистый"
-
-
-      - if:
-          condition:
-            #Если калибровка не выполнена, время после старта между 120 и 180 секунд
-            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state > 120 and id(idUptime).state < 180;'
-          then:
-            #Калибровка выполнена
-            - switch.turn_on: idCalibrationCompleted
-            #Публикуем в текстовый сенсор статус "Калибровка завершена"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Калибровка завершена"
-            #Задержка
-            - delay: 10s
-            #Публикуем в текстовый сенсор статус "Лоток чистый"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Лоток чистый"
+            - if:
+                condition:
+                  #Условие: Время после старта до 180 секунд
+                  - lambda: 'return id(idUptime).state < 180;'
+                then:
+                  #Действие: Включаем выключатель "Калибровка выполнена"
+                  - switch.turn_on: idCalibrationCompleted
+                  #Действие: Публикуем в текстовый сенсор статус "Калибровка завершена"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Калибровка завершена"
+                  #Действие: Задержка
+                  - delay: 10s
+                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Лоток чистый"
+            - if:
+                condition:
+                  #Условие: Время после старта между 120 и 180 секунд
+                  - lambda: 'return id(idUptime).state > 120 and id(idUptime).state < 180;'
+                then:
+                  #Действие: Включаем выключатель "Калибровка выполнена"
+                  - switch.turn_on: idCalibrationCompleted
+                  #Действие: Публикуем в текстовый сенсор статус "Калибровка завершена"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Калибровка завершена"
+                  #Действие: Задержка
+                  - delay: 10s
+                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Лоток чистый"
 
 #Если включаем My AutoCleaning, то сперва сохраняются настройки для AutoCleaning в глобальные переменные, а после будут восстановлены настройки для My AutoCleaning
   - id: idSettingsForMyAutoCleaning
     then:
-      #Сохраняем текущие настройки в глобальные переменные для AutoCleaning
+      #Действие: Сохраняем текущие настройки в глобальные переменные для AutoCleaning
       - globals.set:
           id: idLaunchDelayGlobal
           value: !lambda 'return id(idLaunchDelay).state;'
@@ -762,7 +766,7 @@ script:
           id: idDetectionSensitivityGlobal
           value: !lambda 'return id(idDetectionSensitivity).state;'
       - delay: 2s
-      #Восстанавливаем настройки из глобальных переменных для My AutoCleaning
+      #Действие: Восстанавливаем настройки из глобальных переменных для My AutoCleaning
       - number.set:
           id: idLaunchDelay
           value: !lambda 'return id(idMyLaunchDelayGlobal);'
@@ -776,7 +780,7 @@ script:
 #Если выключаем My AutoCleaning, то сперва сохраняются настройки для My AutoCleaning в глобальные переменные, а после будут восстановлены настройки для AutoCleaning
   - id: idSettingsForAutoCleaning
     then:
-      #Сохраняем текущие настройки в глобальные переменные для My AutoCleaning
+      #Действие: Сохраняем текущие настройки в глобальные переменные для My AutoCleaning
       - globals.set:
           id: idMyLaunchDelayGlobal
           value: !lambda 'return id(idLaunchDelay).state;'
@@ -787,7 +791,7 @@ script:
           id: idMyDetectionSensitivityGlobal
           value: !lambda 'return id(idDetectionSensitivity).state;'
       - delay: 2s
-      #Восстанавливаем настройки из глобальных переменных для AutoCleaning
+      #Действие: Восстанавливаем настройки из глобальных переменных для AutoCleaning
       - number.set:
           id: idLaunchDelay
           value: !lambda 'return id(idLaunchDelayGlobal);'
@@ -798,26 +802,25 @@ script:
           id: idDetectionSensitivity
           value: !lambda 'return id(idDetectionSensitivityGlobal);'
 
-
 #Если включить моя автоуборка 
   - id: idMySettingScript
     then:
-      #Задержка
+      #Действие: Задержка
       - delay: 10s 
-      #Если чувствительность обнаружения не равно 1000, то выставляем настройки по умолчанию
+      #Условие: Если чувствительность обнаружения не равно 1000, то выставляем настройки по умолчанию
       - if:
           condition:
             - lambda: 'return id(idDetectionSensitivity).state != 1000;'
           then:
-            #Чувствительность обнаружения
+            #Действие: Чувствительность обнаружения
             - number.set:
                 id: idDetectionSensitivity
                 value: 1000
-            #Задержка запуска
+            #Действие: Задержка запуска
             - number.set:
                 id: idLaunchDelay
                 value: 5
-            #Интервал между уборками
+            #Действие: Интервал между уборками
             - number.set:
                 id: idIntervalBetweenCleaning
                 value: 15
