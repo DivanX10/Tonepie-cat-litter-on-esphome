@@ -1,0 +1,297 @@
+#####################################################################################
+##################################### Переменные ####################################
+substitutions:
+  board_name: ESP Cat Litter Tonepie
+  node_name: cat litter tonepie
+
+#####################################################################################
+################################ Основная конфигурация ##############################
+esphome:
+  name: cat-litter-tonepie
+  friendly_name: cat-litter-tonepie
+  comment: ESP Cat Litter Tonepie
+
+#####################################################################################
+###################################### Платформа ####################################
+esp8266:
+  board: esp12e
+  framework:
+    version: recommended
+  restore_from_flash: true #Сохраняем предустановленные настройки. После перезагрузки настройки не сбрасываются
+
+#Сброс данных на флэш-накопитель для уменьшения износа флеш-накопителя
+preferences:
+  flash_write_interval: 1min
+
+#####################################################################################
+################################ Wi-Fi и точка доступа ##############################
+#Учетные данные Wi-Fi для подключения платы к домашней сети
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: off
+  reboot_timeout: 5min
+
+#Если не будет связи с WiFi, то поднимется точка доступа
+  ap:
+    ssid: ESP Cat Litter Tonepie
+    password: !secret ap_esp_password
+    ap_timeout: 1 min
+    manual_ip:
+      static_ip: 192.168.4.1
+      gateway: 192.168.4.1
+      subnet: 255.255.255.0
+
+#Компонент mdns заставляет узел объявлять о себе в локальной сети, используя протокол многоадресной рассылки DNS (mDNS), по умолчанию для mDNS disabled: false
+mdns:
+  disabled: false
+
+#Компонент captive portal в ESPHome является резервным механизмом на случай сбоя подключения к настроенному Wi-Fi
+captive_portal:
+
+#Веб сервер
+web_server:
+  port: 80
+
+#Журналирование
+logger:
+  baud_rate: 0
+
+#Enable Home Assistant API
+api:
+
+#Обновление по воздуху (OTA)
+ota:
+  password: "esphome"
+
+#####################################################################################
+######################################### UART ######################################
+uart:
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+  stop_bits: 1
+  data_bits: 8
+  parity: none
+  debug:
+    direction: BOTH
+    dummy_receiver: false
+
+#Включить компонент Tuya MCU
+tuya:
+
+
+#####################################################################################
+################################## Выключатель ######################################
+switch:
+#Авто уборка
+  - platform: "tuya"
+    name: "Auto Cleaning"
+    icon: mdi:auto-mode
+    id: idAutoCleaning
+    switch_datapoint: 105
+
+#Уборка вручную
+  - platform: "tuya"
+    name: "Manual Cleaning"
+    icon: mdi:broom
+    id: idManualCleaning
+    switch_datapoint: 101
+
+#Удалить наполнитель
+  - platform: "tuya"
+    name: "Remove Filler"
+    icon: mdi:trash-can-outline
+    id: idRemoveFiller
+    switch_datapoint: 102
+
+#Инфракрасный датчик
+  - platform: "tuya"
+    name: "Infrared Sensor"
+    icon: mdi:eye-outline
+    id: idInfraredSensor
+    switch_datapoint: 111
+
+#Защита от детей
+  - platform: "tuya"
+    name: "Protection From Children"
+    icon: mdi:lock-check-outline
+    id: idProtectionFromChildren
+    switch_datapoint: 114
+
+#Ионизатор
+  - platform: "tuya"
+    name: "Ionizer"
+    icon: mdi:creation
+    id: idIonizer
+    switch_datapoint: 120
+
+#Авто выключатель очистки запаха
+  - platform: "tuya"
+    name: "Auto Odor Purification Switch"
+    icon: mdi:creation-outline
+    id: idAutoOdorPurificationSwitch
+    switch_datapoint: 126
+
+#####################################################################################
+################################## Сенсор ###########################################
+sensor:
+#Сенсор уровня сигнала WiFi
+  - platform: wifi_signal
+    name: "RSSI WiFi"
+    icon: mdi:wifi
+    update_interval: 60s
+
+#Вес питомца
+  - platform: "tuya"
+    name: "Cat Weight"
+    icon: mdi:scale
+    id: idCatWeight
+    unit_of_measurement: g
+    sensor_datapoint: 6
+
+#Длительность посещения
+  - platform: "tuya"
+    name: "Visit Time"
+    icon: mdi:clock-outline
+    id: idVisitTime
+    unit_of_measurement: sec
+    sensor_datapoint: 8
+
+
+#####################################################################################
+################################### Текстовый сенсор ################################
+text_sensor:
+#Сенсор IP
+  - platform: wifi_info
+    ip_address:
+      name: IP
+      icon: mdi:ip-network
+
+#ESPHome Version
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+
+#Время безотказной работы
+  - platform: template
+    name: "Uptime"
+    icon: mdi:clock-start
+    id: uptime_esp
+    entity_category: diagnostic
+
+#Время
+  - platform: template
+    name: "Time"
+    icon: mdi:clock-digital
+    id: idTime
+    update_interval: 10s
+    lambda: |-
+      auto time_text = id(homeassistant_time).now().strftime("%H:%M:%S / %d-%m-%Y");
+      return { time_text };
+
+
+#####################################################################################
+################################## Бинарный сенсор ##################################
+binary_sensor:
+#Мусорный бак
+  - platform: "tuya"
+    name: "Trash Can"
+    sensor_datapoint: 119
+
+#Уборка
+  - platform: "tuya"
+    name: "Cleaning"
+    sensor_datapoint: 121
+
+#Питомец в лотке
+  - platform: "tuya"
+    name: "Pet Inside"
+    icon: mdi:scale-unbalanced
+    id: idPetInside
+    sensor_datapoint: 104
+
+
+#####################################################################################
+####################################### Число #######################################
+number:
+#Задержка запуска
+  - platform: "tuya"
+    name: "Launch delay"
+    icon: mdi:timer-play-outline
+    id: idLaunchDelay
+    number_datapoint: 117
+    min_value: 0
+    max_value: 60
+    step: 1
+    mode: box #slider/box
+
+#Интервал между уборками
+  - platform: "tuya"
+    name: "Interval Between Cleaning"
+    icon: mdi:clock-time-eight-outline
+    id: idIntervalBetweenCleaning
+    number_datapoint: 118
+    min_value: 0
+    max_value: 120
+    step: 1
+    mode: box #slider/box
+
+#Калибровка бака c отходами
+  - platform: "tuya"
+    name: "Calibration Of The Waste Tank"
+    icon: mdi:delete-variant
+    id: idCalibrationOfTheWasteTank
+    number_datapoint: 124
+    min_value: 0
+    max_value: 15
+    step: 1
+    mode: box #slider/box
+
+#Калибровка наполнителя
+  - platform: "tuya"
+    name: "Calibration Of Filler"
+    icon: mdi:basket-unfill
+    id: idCalibrationOfFiller
+    number_datapoint: 125
+    min_value: 0
+    max_value: 6
+    step: 1
+    mode: box #slider/box
+
+#Чувствительность обнаружения
+  - platform: "tuya"
+    name: "Detection Sensitivity"
+    icon: mdi:signal-variant
+    id: idDetectionSensitivity
+    number_datapoint: 127
+    min_value: 0
+    max_value: 1500
+    step: 1
+    mode: box #slider/box
+
+#Вес питомца
+  - platform: "tuya"
+    name: "Cat Weight"
+    icon: mdi:scale
+    id: idCatWeight
+    number_datapoint: 6
+    min_value: 600
+    max_value: 10000
+    step: 1
+    mode: box #slider/box
+    unit_of_measurement: g
+
+#####################################################################################
+####################################### Кнопка ######################################
+button:
+#Перезагрузка
+  - platform: restart
+    name: "Restart"
+    icon: mdi:restart
+
+#####################################################################################
+####################################### Время #######################################
+time:
+  - platform: homeassistant
+    id: homeassistant_time
