@@ -118,7 +118,7 @@ uart:
 * [Button Card](https://github.com/custom-cards/button-card)
 
 **Карточка**
-* Код карточки можно взять [здесь](https://github.com/DivanX10/tonepie-cat-litter-on-esphome/blob/main/files/Home%20Assistant/ru/Карточка%20управления%20лотком.yaml)
+* Код карточки можно взять [здесь](https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/tree/main/files/Home%20Assistant/ru)
   
 
 Код обратного таймера. Это нужно для карточки, чтобы видеть оставшееся время работы ионизатора
