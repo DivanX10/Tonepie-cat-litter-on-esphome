@@ -174,6 +174,8 @@ switch:
     on_turn_on:
       #Действие: Выключаем выключатель "Автоуборка"
       - switch.turn_off: idAutoCleaning
+      #Действие: Выключаем выключатель "Уборка по расписанию"
+      - switch.turn_off: idScheduledCleaning
 
 #Инфракрасный датчик
   - platform: "tuya"
