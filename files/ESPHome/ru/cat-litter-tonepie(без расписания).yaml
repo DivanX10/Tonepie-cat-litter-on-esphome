@@ -1,7 +1,7 @@
 #В конфигурации используется
 #Автоуборка
 #Уборка вручную
-#Моя автоуборка
+#Моя автоуборка. Выключает автоуборку и работает со своей логикой. Если вес питомца выше указаного, то запускается уборка вручную. В автоуборке это не реализовано, поэтому я не использую автоуборку
 #Статусы
 
 #####################################################################################
@@ -17,9 +17,8 @@ esphome:
   friendly_name: cat-litter-tonepie
   comment: ESP Cat Litter Tonepie
   on_boot:
-    priority: 600
+    priority: -100.0
     then:
-      - delay: 10s
       - script.execute: idStartingScript
 
 #####################################################################################
@@ -76,7 +75,6 @@ api:
 ota:
   password: "esphome"
 
-
 #####################################################################################
 ######################################### UART ######################################
 uart:
@@ -93,66 +91,17 @@ uart:
 #Включить компонент Tuya MCU
 tuya:
 
-
 #####################################################################################
 ########################### Глобальные переменные ###################################
 globals:
-#Задержка запуска для AutoCleaning
-  - id: idLaunchDelayGlobal
-    type: int
-    restore_value: yes
-    initial_value: '2147483648'
-
-#Интервал между уборками для AutoCleaning
-  - id: idIntervalBetweenCleaningGlobal
-    type: int
-    restore_value: yes
-    initial_value: '2147483648'
-
-#Чувствительность обнаружения для AutoCleaning
-  - id: idDetectionSensitivityGlobal
-    type: int
-    restore_value: yes
-    initial_value: '2147483648'
-
-#Задержка запуска для My AutoCleaning
-  - id: idMyLaunchDelayGlobal
-    type: int
-    restore_value: yes
-    initial_value: '2147483648'
-
-#Интервал между уборками для My AutoCleaning
-  - id: idMyIntervalBetweenCleaningGlobal
-    type: int
-    restore_value: yes
-    initial_value: '2147483648'
-
-#Чувствительность обнаружения для My AutoCleaning
-  - id: idMyDetectionSensitivityGlobal
-    type: int
-    restore_value: yes
-    initial_value: '2147483648'
-
 #Была ли уборка MyAutoCleaning?
   - id: idCleaningLastTimeGlobal
     type: bool
     restore_value: yes
     initial_value: 'false'
 
-#Питомец в лотке. Последнее состояние
-  - id: idPetInsideLastSeen
-    type: bool
-    restore_value: yes
-    initial_value: 'false'
-
 #Уборка. Последнее состояние
   - id: idCleaningLastSeen
-    type: bool
-    restore_value: yes
-    initial_value: 'false'
-
-#Ионизатор. Последнее состояние
-  - id: idIonizerLastSeen
     type: bool
     restore_value: yes
     initial_value: 'false'
@@ -187,7 +136,6 @@ switch:
          id: idCleaningLastTimeGlobal
          value: 'false'
 
-
 #Автоуборка. Встроенная логика работы. 
 #Мне не нравится как работает встроенная логика работы автоуборки, поэтому я указал выключать ее по умолчанию. По умолчанию будет выключено при загрузке. 
 #Если надо, чтобы всегда включалась автоуборка, то нужно убрать строку restore_mode: ALWAYS_OFF
@@ -200,8 +148,14 @@ switch:
     restore_mode: ALWAYS_OFF
     on_turn_on:
       - switch.turn_off: idMyAutoCleaning
-      - script.execute: idStartingScript
-      - script.execute: idCalibrationStartedScript
+      #Выполняем действия если калибровка выключена
+      - if:
+          condition:
+            #Условие: Калибровка не выполнена, время работы меньше 1 минуты
+            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state < 300;'
+          then:
+            #Действие: Включаем выключатель "Калибровка завершена"
+            - switch.turn_on: idCalibrationCompleted
 
 #Автоуборка. Своя логика работы автоуборки
 #Если включаем My AutoCleaning, то выключается AutoCleaning
@@ -213,9 +167,6 @@ switch:
     restore_mode: RESTORE_DEFAULT_ON
     on_turn_on:
       - switch.turn_off: idAutoCleaning
-      - script.execute: idSettingsForMyAutoCleaning
-    on_turn_off:
-      - script.execute: idSettingsForAutoCleaning
 
 #Инфракрасный датчик
   - platform: "tuya"
@@ -238,67 +189,65 @@ switch:
     icon: mdi:creation
     id: idIonizer
     switch_datapoint: 120
+    #Если перезагрузить лоток по питанию, то запустится процесс калибровки, а после окончания калибровки включается ионизатор. Это можно использовать как событие, что калибровка завершена
+    #Если перезагрузить ESP, то это условие не подойдет. Лоток делает калибровку, но не включает ионизатор после выполнения калибровки
     #Выполняем действия при включении ионизатора
     on_turn_on:
+      #Выполняем действия после калибровки. Калибровка выполнена
       - if:
           condition:
-            #Если начальная калибровка не выполнена, питомец вышел, уборка закончена, ионизатор не включен
-            - lambda: 'return id(idCalibrationCompleted).state == false and id(idPetInside).state == false and id(idCleaning).state == false and id(idIonizer).state == true;'
+            #Условие: калибровка выполнена
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
           then:
-            #Калибровка выполнена
-            - switch.turn_on: idCalibrationCompleted
-            #Публикуем в текстовый сенсор статус "Калибровка завершена"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Калибровка завершена"
-      - if:
-          condition:
-            #Если начальная калибровка выполнена, питомец вышел, уборка закончена, ионизатор включен
-            - lambda: 'return id(idCalibrationCompleted).state == true and id(idPetInside).state == false and id(idCleaning).state == false and id(idCleaningLastSeen) == true;'
-          then:
-            #Публикуем в текстовый сенсор статус "Уборка закончена"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Уборка закончена"
-            #Задержка
-            - delay: 10s
-            #Публикуем в текстовый сенсор статус "Устранение запаха"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Устранение запаха"
-      - if:
-          condition:
-            #Если начальная калибровка выполнена, питомец вышел, уборка закончена, ионизатор включен
-            - lambda: 'return id(idCalibrationCompleted).state == true and id(idPetInside).state == false and id(idCleaning).state == false and id(idCleaningLastSeen) == false;'
-          then:
-            #Публикуем в текстовый сенсор статус "Устранение запаха"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Устранение запаха"
+            - if:
+                condition:
+                  #Условие: Ионизатор включен, питомца в лотке нет, уборка выключена
+                  - lambda: 'return id(idIonizer).state == true and id(idPetInside).state == false and id(idCleaning).state == false;'
+                then:
+                  #Действие: Задержка
+                  - delay: 10s
+                  #Действие: Публикуем в текстовый сенсор статус
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Устранение запаха"
+            - if:
+                condition:
+                  #Условие: Ионизатор включен, питомец в лотке, уборка выключена
+                  - lambda: 'return id(idIonizer).state == true and id(idPetInside).state == true and id(idCleaning).state == false;'
+                then:
+                  #Действие: Задержка
+                  - delay: 10s
+                  #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Питомец в лотке. Работает ионизатор"
 
     #Выполняем действия при выключении ионизатора
     on_turn_off:
-      #Отправляем в глобальную переменную "Ионизатор. Последнее состояние" статус true
-      - globals.set:
-          id: idIonizerLastSeen
-          value: 'true'
-      #Задержка
-      - delay: 2s
+      #Выполняем действия после калибровки. Калибровка выполнена
       - if:
           condition:
-            #Если начальная калибровка выполнена, питомец вышел, уборка закончена, ионизатор выключен 30 сек назад
-            - lambda: 'return id(idCalibrationCompleted).state == true and id(idPetInside).state == false and id(idCleaning).state == false and id(idIonizer).state == false and id(idIonizerLastSeen) == true;'
+            #Условие: калибровка выполнена
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
           then:
-            #Публикуем в текстовый сенсор статус "Лоток чистый"
-            - text_sensor.template.publish:
-                id: idStatus
-                state: "Лоток чистый"
-      #Задержка
-      - delay: 30s
-      #Отправляем в глобальную переменную "Уборка. Ионизатор. Последнее состояние" статус false
-      - globals.set:
-          id: idIonizerLastSeen
-          value: 'false'
+            - if:
+                condition:
+                  #Условие: Ионизатор выключен, питомца в лотке нет, уборка выключена
+                  - lambda: 'return id(idIonizer).state == false and id(idPetInside).state == false and id(idCleaning).state == false;'
+                then:
+                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Лоток чистый"
+            - if:
+                condition:
+                  #Условие: Ионизатор выключен, питомец в лотке, уборка выключена
+                  - lambda: 'return id(idIonizer).state == false and id(idPetInside).state == true and id(idCleaning).state == false;'
+                then:
+                  #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Питомец в лотке"
 
 #Авто устранение запаха
   - platform: "tuya"
@@ -316,13 +265,24 @@ switch:
 
 #Стартовая калибровка лотка после подачи питания или перезагрузки ESP
   - platform: template
-    name: "CalibrationCompleted"
+    name: "Calibration Completed"
     icon: mdi:scale-balance
     id: idCalibrationCompleted
     optimistic: true
     restore_mode: ALWAYS_OFF
     internal: false #Скрыть - true \показать - false
-
+    on_turn_on:
+      - script.execute: idMySettingScript
+      #Действие: Публикуем в текстовый сенсор статус "Калибровка завершена"
+      - text_sensor.template.publish:
+          id: idStatus
+          state: "Калибровка завершена"
+      #Действие: Задержка
+      - delay: 10s
+      #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
+      - text_sensor.template.publish:
+          id: idStatus
+          state: "Лоток чистый"
 
 #####################################################################################
 ################################## Сенсор ###########################################
@@ -367,30 +327,28 @@ sensor:
     id: idUptime
     icon: mdi:clock-start
     entity_category: diagnostic
-    update_interval: 60s
+    update_interval: 10s
     on_value:
       - if:
           condition:
-            #Если калибровка не выполнена, время после старта между 120 и 180 секунд
-            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state > 120 and id(idUptime).state < 180;'
+            #Условие: Калибровка не выполнена между 240 и 600 секунд
+            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state > 240 and id(idUptime).state < 600;'
           then:
-            - if:
-                condition:
-                  #Повторная проверка если калибровка не выполнена
-                  - lambda: 'return id(idCalibrationCompleted).state == false;'
-                then:
-                    #Калибровка выполнена
-                  - switch.turn_on: idCalibrationCompleted
-                  #Публикуем в текстовый сенсор статус "Калибровка завершена"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Калибровка завершена"
-                  #Задержка
-                  - delay: 10s
-                  #Публикуем в текстовый сенсор статус "Лоток чистый"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Лоток чистый"
+            #Действие: Включаем выключатель "Калибровка выполнена"
+            - switch.turn_on: idCalibrationCompleted
+
+#Cвободная память
+  - platform: template
+    name: "Free Mem Size"
+    icon: mdi:memory
+    entity_category: diagnostic
+    lambda: |-
+      #ifdef MALLOC_CAP_DEFAULT
+         size_t freeValue = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+      #else
+         size_t freeValue = ESP.getFreeHeap();
+      #endif
+      return freeValue;
 
 #####################################################################################
 ################################### Текстовый сенсор ################################
@@ -438,6 +396,13 @@ binary_sensor:
     id: idTrashCan
     sensor_datapoint: 119
 
+#Дополнительный шаблонный бинарный сенсор для публикации статуса в сенсор idCleaning
+  - platform: template
+    name: "Cleaning"
+    icon: mdi:broom
+    id: idBinSensorCleaning
+    internal: true #Скрыть - true \показать - false
+
 #Уборка. Данный сенсор отображает статусы ON/OFF в том случае, если работает автоуборка, а при ручной уборке, эти статусы не работают.
 #Поэтому я добавил в выключатель ручной уборки idManualCleaning публикацию статусов в скрытый шаблонный бинарный сенсор idBinSensorCleaning и благодаря этому для ручной уборки тоже будут статусы ON/OFF
   - platform: "tuya"
@@ -446,33 +411,37 @@ binary_sensor:
     id: idCleaning
     sensor_datapoint: 121
     on_state:
+      then:
       - if:
           condition:
-            #Если уборка запущена
-            - lambda: 'return id(idCleaning).state == true;'
+            #Выполняем действия если калибровка выполнена 
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
           then:
-            #Отправляем в глобальную переменную "Уборка. Последнее состояние" статус true
-            - globals.set:
-                id: idCleaningLastSeen
-                value: 'true'
-      - if:
-          condition:
-            #Если уборка завершена 
-            - lambda: 'return id(idCleaning).state == false;'
-          then:
-            #Задержка
-            - delay: 30s
-            #Отправляем в глобальную переменную "Уборка. Последнее состояние" статус false
-            - globals.set:
-                id: idCleaningLastSeen
-                value: 'false'
-
-#Дополнительный шаблонный бинарный сенсор для публикации статуса в сенсор idCleaning
-  - platform: template
-    name: "Cleaning"
-    icon: mdi:broom
-    id: idBinSensorCleaning
-    internal: true #Скрыть - true \показать - false
+            #Выполняем действия если уборка запущена
+            - if:
+                condition:
+                  #Условие: Уборка запущена
+                  - lambda: 'return id(idCleaning).state == true;'
+                then:
+                  #Действие: Отправляем в глобальную переменную "Уборка. Последнее состояние" статус true
+                  - globals.set:
+                      id: idCleaningLastSeen
+                      value: 'true'
+                  #Действие: Публикуем в текстовый сенсор статус "Уборка запущена"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Уборка запущена"
+            #Выполняем действия если уборка завершена
+            - if:
+                condition:
+                  #Условие: Уборка завершена
+                  - lambda: 'return id(idCleaning).state == false and id(idUptime).state > 60;'
+                then:
+                  #Скрипт "Уборка закончена" имеет задержки и чтобы повторно запустить скрипт, необходимо сначала остановить скрипт, а после повторно запустить
+                  #Действие: Остановка скрипта "Уборка закончена"
+                  - script.stop: idCleaningFinishedScript
+                  #Действие: Запуск скрипта "Уборка закончена"
+                  - script.execute: idCleaningFinishedScript
 
 #Питомец в лотке
   - platform: "tuya"
@@ -482,127 +451,106 @@ binary_sensor:
     sensor_datapoint: 104
     on_state:
       then:
-      #Питомец в лотке
       - if:
           condition:
-            #Условие: Питомец вошел в лоток, калибровка выполнена
-            - lambda: 'return id(idPetInside).state == true and id(idCalibrationCompleted).state == true;'
+            #Выполняем действия если калибровка выполнена 
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
           then:
-            #Уборка не запущена
+            #Выполняем действия если питомец в лотке
             - if:
                 condition:
-                  #Условие: Уборка не запущена, питомец не заходил в лоток
-                  - lambda: 'return id(idCleaning).state == false and id(idPetInsideLastSeen) == false;'
+                  #Условие: Питомец в лотке
+                  - lambda: 'return id(idPetInside).state == true;'
                 then:
-                  #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Питомец в лотке"
-                  #Действие: Отправляем в глобальную переменную "Питомец в лотке. Последнее состояние" статус true
-                  - globals.set:
-                      id: idPetInsideLastSeen
-                      value: 'true'
-                  #Дополнительное условие. Ионизатор
+                  #Условие: Если ионизатор выключен и уборка не запущена
                   - if:
                       condition:
-                        #Условие: Ионизатор выключен
-                        - lambda: 'return id(idIonizer).state == false;'
+                        #Условие: Ионизатор выключен, уборка не запущена
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == false;'
                       then:
                         #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
                         - text_sensor.template.publish:
                             id: idStatus
                             state: "Питомец в лотке"
+
+                  #Условие: Если ионизатор включен и уборка не запущена
                   - if:
                       condition:
-                        #Условие: Ионизатор включен
-                        - lambda: 'return id(idIonizer).state == true;'
+                        #Условие: Ионизатор выключен, уборка не запущена
+                        - lambda: 'return id(idIonizer).state == true and id(idCleaning).state == false;'
                       then:
-                        #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
+                        #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке. Работает ионизатор"
                         - text_sensor.template.publish:
                             id: idStatus
                             state: "Питомец в лотке. Работает ионизатор"
-            #Уборка запущена
-            - if:
-                condition:
-                  #Условие: Уборка запущена
-                  - lambda: 'return id(idCleaning).state == true;'
-                then:
-                  #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке. Уборка приостановлена"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Питомец в лотке. Уборка приостановлена"
 
-      #Питомец вышел
-      - if:
-          condition:
-            #Условие: Питомец вышел из лотка, калибровка выполнена  
-            - lambda: 'return id(idPetInside).state == false and id(idCalibrationCompleted).state == true;'
-          then:
-            #Уборка не запущена
+                  #Условие: Если ионизатор выключен и уборка запущена
+                  - if:
+                      condition:
+                        #Условие: Ионизатор выключен, уборка запущена
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == true;'
+                      then:
+                        #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке. Уборка приостановлена"
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Питомец в лотке. Уборка приостановлена"
+
+            #Выполняем действия если питомец вышел
             - if:
                 condition:
-                  #Условие: Уборка не запущена, питомец был в лотке, ионизатор выключен
-                  - lambda: 'return id(idCleaning).state == false and id(idPetInsideLastSeen) == true and id(idIonizer).state == false;'
+                  #Условие: Питомец вышел
+                  - lambda: 'return id(idPetInside).state == false;'
                 then:
-                  #Действие: Публикуем в текстовый сенсор статус "Питомец вышел"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Питомец вышел"
+                  #Условие: Если ионизатор выключен и уборка не запущена
+                  - if:
+                      condition:
+                        #Условие: Ионизатор выключен, уборка не запущена
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == false;'
+                      then:
+                        #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Лоток чистый"
+
+                  #Условие: Если ионизатор включен и уборка не запущена
+                  - if:
+                      condition:
+                        #Условие: Ионизатор выключен, уборка не запущена
+                        - lambda: 'return id(idIonizer).state == true and id(idCleaning).state == false;'
+                      then:
+                        #Действие: Публикуем в текстовый сенсор статус "Устранение запаха"
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Устранение запаха"
+
+                  #Условие: Если ионизатор выключен и уборка запущена
+                  - if:
+                      condition:
+                        #Условие: Ионизатор выключен, уборка запущена
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == true;'
+                      then:
+                        #Действие: Публикуем в текстовый сенсор статус "Запущена уборка"
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Запущена уборка"
+
                   #Запускаем ручную уборку при условии...
                   - if:
                       condition:
-                          #Условие: Включена MyAutoCleaning, уборка еще не запущена(запустится таймер "Задержка запуска уборки", а после будет запущена уборка), вес питомца больше минимального веса
-                        - lambda: 'return id(idMyAutoCleaning).state == true and id(idCleaningLastTimeGlobal) == false and id(idCatWeight).state >= id(idMinimumPetWeight).state;'
+                      #Условие: Уборка выключена, моя автоуборка включена, уборка еще не запущена(запустится таймер "Задержка запуска уборки", а после будет запущена уборка), вес питомца больше минимального веса
+                        - lambda: 'return id(idCleaning).state == false and id(idMyAutoCleaning).state == true and id(idCleaningLastTimeGlobal) == false and id(idCatWeight).state >= id(idMinimumPetWeight).state;'
                       then:
-                        #Действие: Задержка для запуска уборки вручную
+                      #Действие: Задержка для запуска уборки вручную
                         - delay: !lambda "return id(idLaunchDelay).state*60000;"
                         - if:
                             condition:
-                                #Условие: Дополнительная проверка. Если по прошествии задержки условия верны, то запустить уборку
-                              - lambda: 'return id(idMyAutoCleaning).state == true and id(idCleaningLastTimeGlobal) == false and id(idCatWeight).state >= id(idMinimumPetWeight).state;' 
+                              #Условие: Дополнительная проверка. Если по прошествии задержки условия верны, то запустить уборку
+                              - lambda: 'return id(idCleaning).state == false and id(idMyAutoCleaning).state == true and id(idCleaningLastTimeGlobal) == false and id(idCatWeight).state >= id(idMinimumPetWeight).state;' 
                             then:
-                              #Действие: Включить выключатель "Уборка вручную
+                              #Действие: Выключить ионизатор
+                              - switch.turn_off: idIonizer
+                              #Действие: Включить выключатель "Уборка вручную"
                               - switch.turn_on: idManualCleaning
-                  #Действие: Задержка
-                  - delay: 10s
-                  #Действие: Отправляем в глобальную переменную "Уборка. Последнее состояние" статус false
-                  - globals.set:
-                      id: idPetInsideLastSeen
-                      value: 'false'
-                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Лоток чистый"
-            #Уборка запущена
-            - if:
-                condition:
-                  #Условие: Уборка запущена, ионизатор выключен
-                  - lambda: 'return id(idCleaning).state == true and id(idIonizer).state == false;'
-                then:
-                  #Действие: Публикуем в текстовый сенсор статус "Уборка запущена"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Уборка запущена"
-                  #Дополнительное условие. Ионизатор
-                  - if:
-                      condition:
-                        #Условие: Ионизатор выключен
-                        - lambda: 'return id(idIonizer).state == false;'
-                      then:
-                        #Действие: Публикуем в текстовый сенсор статус "Питомец в лотке"
-                        - text_sensor.template.publish:
-                            id: idStatus
-                            state: "Питомец в лотке"
-            #Уборка выключена
-            - if:
-                condition:
-                  #Условие: Уборка выключена, ионизатор включен
-                  - lambda: 'return id(idCleaning).state == false and id(idIonizer).state == true;'
-                then:
-                  #Действие: Публикуем в текстовый сенсор статус "Устранение запаха"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Устранение запаха"
 
 #####################################################################################
 ####################################### Число #######################################
@@ -658,7 +606,7 @@ number:
     id: idDetectionSensitivity
     number_datapoint: 127
     min_value: 0
-    max_value: 3000
+    max_value: 1500
     step: 1
     mode: box #slider/box
 
@@ -674,142 +622,28 @@ number:
     optimistic: true
     restore_value: true
 
-
 #####################################################################################
 ################################## Скрипт ###########################################
 script:
-#Стартовый скрипт. Скрипт запускается после загрузки. Работает, если выключена автоуборка
-#Настройки по умолчанию после загрузки при условии, что если чувствительность обнаружения не равно 1000
+#Стартовый скрипт. Скрипт запускается при загрузки. Работает, если калибровка не выполнена
   - id: idStartingScript
+    mode: single
     then:
+      #Действие: Выключаем выключатель "Калибровка выполнена"
+      - switch.turn_off: idCalibrationCompleted
       #Действие: Публикуем в текстовый сенсор статус "Запущена калибровка"
       - text_sensor.template.publish:
           id: idStatus
           state: "Запущена калибровка"
-      #Действие: Выключаем выключатель "Калибровка не выполнена"
-      - switch.turn_off: idCalibrationCompleted
-      #Действие: Задержка
-      - delay: 60s 
+
+#Настройки по умолчанию после загрузки при условии, если чувствительность обнаружения не равно 1000
+  - id: idMySettingScript
+    mode: single
+    then:
       #Если чувствительность обнаружения не равно 1000, то выставляем настройки по умолчанию
       - if:
           condition:
-            #Условие: Автоуборка выключена, чувствительность обнаружения не равно 1000
-            - lambda: 'return id(idAutoCleaning).state == false and id(idDetectionSensitivity).state != 1000;'
-          then:
-            #Действие: Чувствительность обнаружения
-            - number.set:
-                id: idDetectionSensitivity
-                value: 1000
-            #Действие: Задержка запуска
-            - number.set:
-                id: idLaunchDelay
-                value: 5
-            #Действие: Интервал между уборками
-            - number.set:
-                id: idIntervalBetweenCleaning
-                value: 15
-
-#После подачи питания на лоток или перезагрузки ESP лоток начинает вращать барабан, делая калибровку, а после готов к работе
-  - id: idCalibrationStartedScript
-    then:
-      - if:
-          condition:
-            #Условие: Калибровка не выполнена
-            - lambda: 'return id(idCalibrationCompleted).state == false;'
-          then:
-            - if:
-                condition:
-                  #Условие: Время после старта до 180 секунд
-                  - lambda: 'return id(idUptime).state < 180;'
-                then:
-                  #Действие: Включаем выключатель "Калибровка выполнена"
-                  - switch.turn_on: idCalibrationCompleted
-                  #Действие: Публикуем в текстовый сенсор статус "Калибровка завершена"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Калибровка завершена"
-                  #Действие: Задержка
-                  - delay: 10s
-                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Лоток чистый"
-            - if:
-                condition:
-                  #Условие: Время после старта между 120 и 180 секунд
-                  - lambda: 'return id(idUptime).state > 120 and id(idUptime).state < 180;'
-                then:
-                  #Действие: Включаем выключатель "Калибровка выполнена"
-                  - switch.turn_on: idCalibrationCompleted
-                  #Действие: Публикуем в текстовый сенсор статус "Калибровка завершена"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Калибровка завершена"
-                  #Действие: Задержка
-                  - delay: 10s
-                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
-                  - text_sensor.template.publish:
-                      id: idStatus
-                      state: "Лоток чистый"
-
-#Если включаем My AutoCleaning, то сперва сохраняются настройки для AutoCleaning в глобальные переменные, а после будут восстановлены настройки для My AutoCleaning
-  - id: idSettingsForMyAutoCleaning
-    then:
-      #Действие: Сохраняем текущие настройки в глобальные переменные для AutoCleaning
-      - globals.set:
-          id: idLaunchDelayGlobal
-          value: !lambda 'return id(idLaunchDelay).state;'
-      - globals.set:
-          id: idIntervalBetweenCleaningGlobal
-          value: !lambda 'return id(idIntervalBetweenCleaning).state;'
-      - globals.set:
-          id: idDetectionSensitivityGlobal
-          value: !lambda 'return id(idDetectionSensitivity).state;'
-      - delay: 2s
-      #Действие: Восстанавливаем настройки из глобальных переменных для My AutoCleaning
-      - number.set:
-          id: idLaunchDelay
-          value: !lambda 'return id(idMyLaunchDelayGlobal);'
-      - number.set:
-          id: idIntervalBetweenCleaning
-          value: !lambda 'return id(idMyIntervalBetweenCleaningGlobal);'
-      - number.set:
-          id: idDetectionSensitivity
-          value: !lambda 'return id(idMyDetectionSensitivityGlobal);'
-
-#Если выключаем My AutoCleaning, то сперва сохраняются настройки для My AutoCleaning в глобальные переменные, а после будут восстановлены настройки для AutoCleaning
-  - id: idSettingsForAutoCleaning
-    then:
-      #Действие: Сохраняем текущие настройки в глобальные переменные для My AutoCleaning
-      - globals.set:
-          id: idMyLaunchDelayGlobal
-          value: !lambda 'return id(idLaunchDelay).state;'
-      - globals.set:
-          id: idMyIntervalBetweenCleaningGlobal
-          value: !lambda 'return id(idIntervalBetweenCleaning).state;'
-      - globals.set:
-          id: idMyDetectionSensitivityGlobal
-          value: !lambda 'return id(idDetectionSensitivity).state;'
-      - delay: 2s
-      #Действие: Восстанавливаем настройки из глобальных переменных для AutoCleaning
-      - number.set:
-          id: idLaunchDelay
-          value: !lambda 'return id(idLaunchDelayGlobal);'
-      - number.set:
-          id: idIntervalBetweenCleaning
-          value: !lambda 'return id(idIntervalBetweenCleaningGlobal);'
-      - number.set:
-          id: idDetectionSensitivity
-          value: !lambda 'return id(idDetectionSensitivityGlobal);'
-
-#Если включить моя автоуборка 
-  - id: idMySettingScript
-    then:
-      #Действие: Задержка
-      - delay: 10s 
-      #Условие: Если чувствительность обнаружения не равно 1000, то выставляем настройки по умолчанию
-      - if:
-          condition:
+            #Условие: Чувствительность обнаружения не равно 1000
             - lambda: 'return id(idDetectionSensitivity).state != 1000;'
           then:
             #Действие: Чувствительность обнаружения
@@ -825,6 +659,39 @@ script:
                 id: idIntervalBetweenCleaning
                 value: 15
 
+#Уборка закончена
+  - id: idCleaningFinishedScript
+    mode: single
+    then:
+      #Уборка закончена 
+      - if:
+          condition:
+            #Условие: Уборка закончена 
+            - lambda: 'return id(idCleaning).state == false;'
+          then:
+            #Действие: Отправляем в глобальную переменную "Уборка. Последнее состояние" статус false
+            - globals.set:
+                id: idCleaningLastSeen
+                value: 'false'
+            #Действие: Задержка
+            - delay: 30s
+            #Дополнительное условие
+            - if:
+                condition:
+                  #Условие: Ионизатор выключен
+                  - lambda: 'return id(idIonizer).state == false;'
+                then:
+                  #Действие: Публикуем в текстовый сенсор статус "Уборка закончена"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Уборка закончена"
+                  #Действие: Задержка
+                  - delay: 10s
+                  #Действие: Публикуем в текстовый сенсор статус "Лоток чистый"
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Лоток чистый"
+
 #####################################################################################
 ####################################### Кнопка ######################################
 button:
@@ -838,3 +705,5 @@ button:
 time:
   - platform: homeassistant
     id: homeassistant_time
+
+
