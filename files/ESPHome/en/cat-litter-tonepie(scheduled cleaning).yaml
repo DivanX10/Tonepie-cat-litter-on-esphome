@@ -841,7 +841,7 @@ time:
       - seconds: 0
         then:
           - lambda: |-
-              //Выходим, ничего не делая, если wifi не подключен
+              //Exit without doing anything if wifi is not connected
               if (!id(idWiFi).is_connected()) {
                 ESP_LOGD("on_time", "Wifi not connected! Do nothing.");
                 return;
