@@ -491,6 +491,12 @@ binary_sensor:
                         #Action: Publish the status to the text sensor
                         - text_sensor.template.publish:
                             id: idStatus
+                            state: "The pet is out"
+                        #Action: Delay
+                        - delay: 10s
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
                             state: "The tray is clean"
 
                   #Condition: If the ionizer is turned on and cleaning has not started
@@ -502,6 +508,12 @@ binary_sensor:
                         #Action: Publish the status to the text sensor
                         - text_sensor.template.publish:
                             id: idStatus
+                            state: "The pet is out"
+                        #Action: Delay
+                        - delay: 10s
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
                             state: "Eliminate odor"
 
                   #Condition: If the ionizer is turned off and cleaning has started
@@ -510,6 +522,12 @@ binary_sensor:
                         #Condition: Ionizer is turned off, cleaning has started
                         - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == true;'
                       then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "The pet is out"
+                        #Action: Delay
+                        - delay: 10s
                         #Action: Publish the status to the text sensor
                         - text_sensor.template.publish:
                             id: idStatus
