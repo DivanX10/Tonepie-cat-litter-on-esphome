@@ -1,3 +1,5 @@
+### [Read in English here](https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/blob/main/README_EN.md)
+
 # Модернизация кошачьего туалета Tonepie
 Проект для ESPHome и Home Assistant
 
