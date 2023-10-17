@@ -1,0 +1,906 @@
+#The configuration uses
+#Auto cleaning
+#Manual cleaning
+#My auto cleaning. Turns off auto cleaning and works with its own logic. If the pet's weight is higher than specified, then cleaning starts manually. Autocleaning doesn't implement this, so I don't use autocleaning
+#Scheduled cleaning
+#Statuses
+
+#####################################################################################
+###################################### Variables ####################################
+substitutions:
+  board_name: ESP Cat Litter Tonepie
+  node_name: cat litter tonepie
+  max_skipped_time: "60" #Minutes during which we will start the missed feeding
+
+#####################################################################################
+################################# Basic configuration ###############################
+esphome:
+  name: cat-litter-tonepie
+  friendly_name: cat-litter-tonepie
+  comment: ESP Cat Litter Tonepie
+  on_boot:
+    priority: -100.0
+    then:
+      - script.execute: idStartingScript
+
+#####################################################################################
+####################################### Platform ####################################
+esp8266:
+  board: esp12e
+  framework:
+    version: recommended
+  restore_from_flash: true #We save the preset settings. After a reboot, the settings are not reset
+
+#Resetting data to the flash drive to reduce the wear of the flash drive
+preferences:
+  flash_write_interval: 1min
+
+#####################################################################################
+################################ WiFi and access point ##############################
+#Wi-Fi credentials for connecting the board to the home network
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: off
+  reboot_timeout: 5min
+  id: idWiFi
+
+#If there is no connection with WiFi, then the access point will rise
+  ap:
+    ssid: ESP Cat Litter Tonepie
+    password: !secret ap_esp_password
+    ap_timeout: 1 min
+    manual_ip:
+      static_ip: 192.168.4.1
+      gateway: 192.168.4.1
+      subnet: 255.255.255.0
+
+#The mdns component forces the node to announce itself on the local network using the DNS Multicast Protocol (mDNS), by default for mDNS disabled: false
+mdns:
+  disabled: false
+
+#The captive portal component in ESPHome is a backup mechanism in case the connection to the configured Wi-Fi fails
+captive_portal:
+
+#Web server
+web_server:
+  port: 80
+
+#Logging
+logger:
+  baud_rate: 0
+
+#Enable Home Assistant API
+api:
+
+#Over-the-Air Update (OTA)
+ota:
+  password: "esphome"
+
+#####################################################################################
+######################################### UART ######################################
+uart:
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+  stop_bits: 1
+  data_bits: 8
+  parity: none
+#  debug:
+#    direction: BOTH
+#    dummy_receiver: false
+
+#Enable the Tuya MCU component
+tuya:
+
+#####################################################################################
+############################## Global variables #####################################
+globals:
+#Was there MyAutoCleaning?
+  - id: idCleaningLastTimeGlobal
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+#Cleaning. Last state
+  - id: idCleaningLastSeen
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+#Last scheduled cleaning
+  - id: idLastCleaningTimes
+    type: int
+    restore_value: yes
+    initial_value: '2147483648'
+
+#####################################################################################
+##################################### Switch ########################################
+switch:
+  - platform: "tuya"
+    name: "Manual Cleaning"
+    icon: mdi:broom
+    id: idManualCleaning
+    switch_datapoint: 101
+    on_turn_on:
+      #We publish the cleaning status
+      - binary_sensor.template.publish:
+          id: idCleaning
+          state: ON
+    on_turn_off:
+      #We publish the cleaning status
+      - binary_sensor.template.publish:
+          id: idCleaning
+          state: OFF
+      #If the cleaning was done manually, then we send it to the global variable for “Was the cleaning done by MyAutoCleaning?” status true
+      - globals.set:
+          id: idCleaningLastTimeGlobal
+          value: 'true'
+      #Delay for cleaning interval
+      - delay: !lambda "return id(idIntervalBetweenCleaning).state*60000;"
+      #After a delay, we send it to a global variable for "Was there MyAutoCleaning?" status false. Thus, if the pet enters and leaves, the next cleaning will start
+      - globals.set:
+         id: idCleaningLastTimeGlobal
+         value: 'false'
+
+  - platform: "tuya"
+    name: "AutoCleaning"
+    icon: mdi:auto-mode
+    id: idAutoCleaning
+    switch_datapoint: 105
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - switch.turn_off: idMyAutoCleaning
+      #Perform actions if calibration is turned off
+      - if:
+          condition:
+            #Condition: Calibration not performed, operating time less than 1 minute
+            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state < 300;'
+          then:
+            #Action: Turn on the "Calibration complete" switch
+            - switch.turn_on: idCalibrationCompleted
+
+#Autocleaning. Its own logic for automatic cleaning
+#If we turn on My AutoCleaning, then AutoCleaning is turned off
+  - platform: template
+    name: "My AutoCleaning"
+    icon: mdi:broom
+    id: idMyAutoCleaning
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - switch.turn_off: idAutoCleaning
+
+  - platform: "tuya"
+    name: "Infrared Sensor"
+    icon: mdi:eye-outline
+    id: idInfraredSensor
+    switch_datapoint: 111
+    restore_mode: ALWAYS_OFF
+
+  - platform: "tuya"
+    name: "Protection From Children"
+    icon: mdi:lock-check-outline
+    id: idProtectionFromChildren
+    switch_datapoint: 114
+
+  - platform: "tuya"
+    name: "Ionizer"
+    icon: mdi:creation
+    id: idIonizer
+    switch_datapoint: 120
+    #Perform actions when turning on the ionizer
+    on_turn_on:
+      #We perform actions after calibration. Calibration completed
+      - if:
+          condition:
+            #Condition: Calibration completed
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
+          then:
+            - if:
+                condition:
+                  #Condition: Ionizer is on, there is no pet in the tray, cleaning is off
+                  - lambda: 'return id(idIonizer).state == true and id(idPetInside).state == false and id(idCleaning).state == false;'
+                then:
+                  #Action: Delay
+                  - delay: 10s
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Eliminate odor"
+            - if:
+                condition:
+                  #Condition: Ionizer is on, pet is in the tray, cleaning is off
+                  - lambda: 'return id(idIonizer).state == true and id(idPetInside).state == true and id(idCleaning).state == false;'
+                then:
+                  #Action: Delay
+                  - delay: 10s
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Pet in a tray. The ionizer is working"
+
+    #What to do when turning off the ionizer
+    on_turn_off:
+      #We perform actions after calibration. Calibration completed
+      - if:
+          condition:
+            #Precondition: Calibration completed
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
+          then:
+            - if:
+                condition:
+                  #Condition: Ionizer is turned off, there is no pet in the tray, cleaning is turned off
+                  - lambda: 'return id(idIonizer).state == false and id(idPetInside).state == false and id(idCleaning).state == false;'
+                then:
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "The tray is clean"
+            - if:
+                condition:
+                  #Condition: Ionizer is turned off, pet is in the tray, cleaning is turned off
+                  - lambda: 'return id(idIonizer).state == false and id(idPetInside).state == true and id(idCleaning).state == false;'
+                then:
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Pet in a tray"
+
+  - platform: "tuya"
+    name: "Auto Odor Purification"
+    icon: mdi:creation-outline
+    id: idAutoOdorPurification
+    switch_datapoint: 126
+
+  - platform: "tuya"
+    name: "Remove Filler"
+    icon: mdi:trash-can-outline
+    id: idRemoveFiller
+    switch_datapoint: 102
+
+  - platform: template
+    name: "Calibration Completed"
+    icon: mdi:scale-balance
+    id: idCalibrationCompleted
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    internal: false #Hide - true \show - false
+    on_turn_on:
+      - script.execute: idMySettingScript
+      #Action: Publish the status to the text sensor
+      - text_sensor.template.publish:
+          id: idStatus
+          state: "Calibration complete"
+      #Action: Delay
+      - delay: 10s
+      #Action: Publish the status to the text sensor
+      - text_sensor.template.publish:
+          id: idStatus
+          state: "The tray is clean"
+
+#####################################################################################
+################################## Sensor ###########################################
+sensor:
+  - platform: wifi_signal
+    name: "RSSI WiFi"
+    icon: mdi:wifi
+    update_interval: 60s
+
+  - platform: "tuya"
+    name: "Cat Weight"
+    icon: mdi:scale
+    id: idCatWeight
+    unit_of_measurement: g
+    sensor_datapoint: 6
+
+  - platform: "tuya"
+    name: "Visit Time Second"
+    icon: mdi:clock-outline
+    id: idVisitTimeSecond
+    unit_of_measurement: min
+    sensor_datapoint: 8
+    internal: true #Hide - true \show - false
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: idVisitTime
+            state: !lambda |-
+              int seconds = round(id(idVisitTimeSecond).raw_state);
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (String(minutes) + "m " + String(seconds) + "s")
+              ).c_str();
+
+  - platform: uptime
+    name: "Uptime"
+    id: idUptime
+    icon: mdi:clock-start
+    entity_category: diagnostic
+    update_interval: 10s
+    on_value:
+      - if:
+          condition:
+            #Condition: Calibration failed between 240 and 600 seconds
+            - lambda: 'return id(idCalibrationCompleted).state == false and id(idUptime).state > 240 and id(idUptime).state < 600;'
+          then:
+            #Action: Turn on the “Calibration Complete” switch
+            - switch.turn_on: idCalibrationCompleted
+
+  - platform: template
+    name: "Free Mem Size"
+    icon: mdi:memory
+    entity_category: diagnostic
+    lambda: |-
+      #ifdef MALLOC_CAP_DEFAULT
+         size_t freeValue = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+      #else
+         size_t freeValue = ESP.getFreeHeap();
+      #endif
+      return freeValue;
+
+#####################################################################################
+###################################### Text sensor ##################################
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP
+      icon: mdi:ip-network
+
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+
+  - platform: template
+    name: "Time"
+    icon: mdi:clock-digital
+    id: idTime
+    update_interval: 10s
+    lambda: |-
+      auto time_text = id(homeassistant_time).now().strftime("%H:%M:%S / %d-%m-%Y");
+      return { time_text };
+
+  - platform: template
+    name: "Status"
+    id: idStatus
+    icon: mdi:information-slab-circle-outline
+
+#Duration of visit in minutes and seconds
+  - platform: template
+    name: "Visit Time"
+    icon: mdi:clock-outline
+    id: idVisitTime
+
+#####################################################################################
+################################### Binary sensor ###################################
+binary_sensor:
+  - platform: "tuya"
+    name: "Trash Can"
+    icon: mdi:trash-can-outline
+    id: idTrashCan
+    sensor_datapoint: 119
+
+  - platform: template
+    name: "Cleaning"
+    icon: mdi:broom
+    id: idBinSensorCleaning
+    internal: true #Hide - true \show - false
+
+  - platform: "tuya"
+    name: "Cleaning"
+    icon: mdi:broom
+    id: idCleaning
+    sensor_datapoint: 121
+    on_state:
+      then:
+      - if:
+          condition:
+            #Perform actions if calibration is completed
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
+          then:
+            #Perform actions if cleaning is started
+            - if:
+                condition:
+                  #Condition: Cleaning started
+                  - lambda: 'return id(idCleaning).state == true;'
+                then:
+                  #Action: Send the status true to the global variable "Cleaning. Last state"
+                  - globals.set:
+                      id: idCleaningLastSeen
+                      value: 'true'
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Cleaning has started"
+            #We carry out actions if cleaning is completed
+            - if:
+                condition:
+                  #Condition: Cleaning completed
+                  - lambda: 'return id(idCleaning).state == false and id(idUptime).state > 60;'
+                then:
+                   #The "Cleaning is finished" script has delays and in order to re-run the script, you must first stop the script and then re-run it
+                   #Action: Stop the "Cleaning Complete" script
+                  - script.stop: idCleaningFinishedScript
+                  #Action: Run the "Cleaning Complete" script
+                  - script.execute: idCleaningFinishedScript
+
+  - platform: "tuya"
+    name: "Pet Inside"
+    icon: mdi:scale-unbalanced
+    id: idPetInside
+    sensor_datapoint: 104
+    on_state:
+      then:
+      - if:
+          condition:
+            #Perform actions if calibration is completed
+            - lambda: 'return id(idCalibrationCompleted).state == true;'
+          then:
+            #What to do if your pet is in the litter box
+            - if:
+                condition:
+                  #Condition: Pet in a litter box
+                  - lambda: 'return id(idPetInside).state == true;'
+                then:
+                  #Condition: If the ionizer is turned off and cleaning has not started
+                  - if:
+                      condition:
+                        #Condition: Ionizer is turned off, cleaning has not started
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == false;'
+                      then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Pet in a tray"
+
+                  #Condition: If the ionizer is turned on and cleaning has not started
+                  - if:
+                      condition:
+                        #Condition: Ionizer is turned off, cleaning has not started
+                        - lambda: 'return id(idIonizer).state == true and id(idCleaning).state == false;'
+                      then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Pet in a tray. The ionizer is working"
+
+                  #Condition: If the ionizer is turned off and cleaning has started
+                  - if:
+                      condition:
+                        #Condition: Ionizer is turned off, cleaning has started
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == true;'
+                      then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Pet in a tray. Cleaning suspended"
+
+            #Perform actions if the pet leaves
+            - if:
+                condition:
+                  #Condition: Pet is out
+                  - lambda: 'return id(idPetInside).state == false;'
+                then:
+                  #Condition: If the ionizer is turned off and cleaning has not started
+                  - if:
+                      condition:
+                        #Condition: Ionizer is turned off, cleaning has not started
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == false;'
+                      then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "The tray is clean"
+
+                  #Condition: If the ionizer is turned on and cleaning has not started
+                  - if:
+                      condition:
+                        #Condition: Ionizer is turned off, cleaning has not started
+                        - lambda: 'return id(idIonizer).state == true and id(idCleaning).state == false;'
+                      then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Eliminate odor"
+
+                  #Condition: If the ionizer is turned off and cleaning has started
+                  - if:
+                      condition:
+                        #Condition: Ionizer is turned off, cleaning has started
+                        - lambda: 'return id(idIonizer).state == false and id(idCleaning).state == true;'
+                      then:
+                        #Action: Publish the status to the text sensor
+                        - text_sensor.template.publish:
+                            id: idStatus
+                            state: "Cleaning started"
+
+                  #We start manual cleaning under the condition...
+                  - if:
+                      condition:
+                      #Condition: Cleaning is turned off, my auto cleaning is turned on, cleaning has not yet started (the "Delay start cleaning" timer will start, and then cleaning will start), the pet's weight is greater than the minimum weight
+                        - lambda: 'return id(idCleaning).state == false and id(idMyAutoCleaning).state == true and id(idCleaningLastTimeGlobal) == false and id(idCatWeight).state >= id(idMinimumPetWeight).state;'
+                      then:
+                      #Action: Delay to start cleaning manually
+                        - delay: !lambda "return id(idLaunchDelay).state*60000;"
+                        - if:
+                            condition:
+                              #Condition: Additional verification. If after the delay the conditions are correct, then start cleaning
+                              - lambda: 'return id(idCleaning).state == false and id(idMyAutoCleaning).state == true and id(idCleaningLastTimeGlobal) == false and id(idCatWeight).state >= id(idMinimumPetWeight).state;' 
+                            then:
+                              #Action: Turn off the ionizer
+                              - switch.turn_off: idIonizer
+                              #Action: Turn on the "Manual Cleaning" switch
+                              - switch.turn_on: idManualCleaning
+
+
+
+#####################################################################################
+###################################### Number #######################################
+number:
+#Waste tank calibration
+  - platform: "tuya"
+    name: "Calibration Of The Waste Tank"
+    icon: mdi:delete-variant
+    id: idCalibrationOfTheWasteTank
+    number_datapoint: 124
+    min_value: 0
+    max_value: 15
+    step: 1
+    mode: box #slider/box
+
+#Filler calibration
+  - platform: "tuya"
+    name: "Calibration Of Filler"
+    icon: mdi:basket-unfill
+    id: idCalibrationOfFiller
+    number_datapoint: 125
+    min_value: 0
+    max_value: 6
+    step: 1
+    mode: box #slider/box
+
+#Start delay
+  - platform: "tuya"
+    name: "Launch delay"
+    icon: mdi:timer-play-outline
+    id: idLaunchDelay
+    number_datapoint: 117
+    min_value: 0
+    max_value: 60
+    step: 1
+    mode: box #slider/box
+
+#Interval between cleanings
+  - platform: "tuya"
+    name: "Interval Between Cleaning"
+    icon: mdi:clock-time-eight-outline
+    id: idIntervalBetweenCleaning
+    number_datapoint: 118
+    min_value: 0
+    max_value: 120
+    step: 1
+    mode: box #slider/box
+
+#Detection sensitivity
+  - platform: "tuya"
+    name: "Detection Sensitivity"
+    icon: mdi:signal-variant
+    id: idDetectionSensitivity
+    number_datapoint: 127
+    min_value: 0
+    max_value: 1500
+    step: 1
+    mode: box #slider/box
+
+#Minimum pet weight
+  - platform: template
+    name: "Minimum Pet Weight"
+    icon: mdi:weight-gram
+    id: idMinimumPetWeight
+    min_value: 0
+    max_value: 5000
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+#Cleaning plan. We indicate the cleaning time, if there is no need to do cleaning, then indicate 0
+  - platform: template
+    name: "Cleaning Time 01"
+    icon: mdi:clock-start
+    id: idCleaningTime1
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 02"
+    icon: mdi:clock-start
+    id: idCleaningTime2
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 03"
+    icon: mdi:clock-start
+    id: idCleaningTime3
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 04"
+    icon: mdi:clock-start
+    id: idCleaningTime4
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 05"
+    icon: mdi:clock-start
+    id: idCleaningTime5
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 06"
+    icon: mdi:clock-start
+    id: idCleaningTime6
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 07"
+    icon: mdi:clock-start
+    id: idCleaningTime7
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 08"
+    icon: mdi:clock-start
+    id: idCleaningTime8
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 09"
+    icon: mdi:clock-start
+    id: idCleaningTime9
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 10"
+    icon: mdi:clock-start
+    id: idCleaningTime10
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 11"
+    icon: mdi:clock-start
+    id: idCleaningTime11
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+  - platform: template
+    name: "Cleaning Time 12"
+    icon: mdi:clock-start
+    id: idCleaningTime12
+    min_value: 0
+    max_value: 2359
+    step: 1
+    mode: box #slider/box
+    optimistic: true
+    restore_value: true
+
+
+#####################################################################################
+################################## Script ###########################################
+script:
+#Start script. The script runs when loading. Works if calibration is not performed
+  - id: idStartingScript
+    mode: single
+    then:
+      #Action: Turn off the "Calibration Complete" switch
+      - switch.turn_off: idCalibrationCompleted
+      #Action: Publish the status to the text sensor
+      - text_sensor.template.publish:
+          id: idStatus
+          state: "Calibration started"
+
+#Default settings after boot if detection sensitivity is not 1000
+  - id: idMySettingScript
+    mode: single
+    then:
+      #If detection sensitivity is not equal to 1000, then set the default settings
+      - if:
+          condition:
+            #Condition: Detection sensitivity is not equal to 1000
+            - lambda: 'return id(idDetectionSensitivity).state != 1000;'
+          then:
+            #Action: Detection sensitivity
+            - number.set:
+                id: idDetectionSensitivity
+                value: 1000
+            #Action: Delay start
+            - number.set:
+                id: idLaunchDelay
+                value: 5
+            #Action: Interval between cleanings
+            - number.set:
+                id: idIntervalBetweenCleaning
+                value: 15
+
+#Cleaning is complete
+  - id: idCleaningFinishedScript
+    mode: single
+    then:
+      #Cleaning is complete
+      - if:
+          condition:
+            #Condition: Cleaning completed
+            - lambda: 'return id(idCleaning).state == false;'
+          then:
+            #Action: Send the status false to the global variable "Cleaning. Last state"
+            - globals.set:
+                id: idCleaningLastSeen
+                value: 'false'
+            #Action: Delay
+            - delay: 30s
+            #Additional condition
+            - if:
+                condition:
+                  #Condition: Ionizer is turned off
+                  - lambda: 'return id(idIonizer).state == false;'
+                then:
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "Cleaning is complete"
+                  #Action: Delay
+                  - delay: 10s
+                  #Action: Publish the status to the text sensor
+                  - text_sensor.template.publish:
+                      id: idStatus
+                      state: "The tray is clean"
+
+#Scheduled cleaning
+  - id: idScheduledCleaningScript
+    then:
+      - if:
+          condition:
+            #Condition: Scheduled cleaning
+            - lambda: 'return id(idScheduledCleaning).state == true;'
+          then:
+            - if:
+                condition:
+                  #Condition: Autocleaning is turned off, my autocleaning is turned off, manual cleaning is turned off
+                  - lambda: 'return id(idAutoCleaning).state == false and id(idMyAutoCleaning).state == false and id(idManualCleaning).state == false;'
+                then:
+                  #Turn on the "Manual cleaning" switch
+                  - switch.turn_on: idManualCleaning
+
+#####################################################################################
+####################################### Button ######################################
+button:
+  - platform: restart
+    name: "Restart"
+    icon: mdi:restart
+
+#####################################################################################
+######################################## Time #######################################
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+    on_time:
+      - seconds: 0
+        then:
+          - lambda: |-
+              //Выходим, ничего не делая, если wifi не подключен
+              if (!id(idWiFi).is_connected()) {
+                ESP_LOGD("on_time", "Wifi not connected! Do nothing.");
+                return;
+              }
+              //We leave without doing anything if the clock is broken (not valid)
+              auto current_time = id(homeassistant_time).now();
+              if (!current_time.is_valid()) {
+                ESP_LOGD("on_time", "Invalid time! Do nothing.");
+                return;
+              }
+              //We go out without doing anything if scheduled feeding is not turned on
+              if (!id(idScheduledCleaning).state) {
+                ESP_LOGD("on_time", "ScheduledCleaning if Off! Do nothing.");
+                return;
+              }
+ 
+              //We get the hours, minutes of the current time
+              int current_hours = current_time.hour;
+              int current_minutes = current_time.minute;
+              ESP_LOGD("on_time", "Current time: %02d:%02d", current_hours, current_minutes);
+              
+              //We go through all the schedules in a loop
+              template_::TemplateNumber *cleaning_times[] = {
+                id(idCleaningTime1),
+                id(idCleaningTime2),
+                id(idCleaningTime3),
+                id(idCleaningTime4),
+                id(idCleaningTime5),
+                id(idCleaningTime6),
+                id(idCleaningTime7),
+                id(idCleaningTime8),
+                id(idCleaningTime9),
+                id(idCleaningTime10),
+                id(idCleaningTime11),
+                id(idCleaningTime12)
+                };
+              for (int i = 0; i < sizeof(cleaning_times) / sizeof(*cleaning_times); i++) {
+                //Skip schedules with value "0"
+                if (cleaning_times[i]->state == 0) continue;
+ 
+                //We get hours and minutes of scheduled cleaning
+                int cleaning_hours = (int) (cleaning_times[i]->state) / 100;
+                int cleaning_minutes = (int) (cleaning_times[i]->state) % 100;
+
+                //We calculate the difference in minutes between the current time and the schedule
+                int diff_time = ((cleaning_hours > current_hours ? current_hours + 24 : current_hours) * 60 + current_minutes) - (cleaning_hours * 60 + cleaning_minutes);
+ 
+                //If the limit is zero (diff_time is 0) - it means it is time for scheduled cleaning
+                //If the difference is greater than 0 and less than the max_skipped_time constant, check whether delayed cleaning needs to be started (the difference between the current time and the global idLastCleaningTimes must be at least "max_skipped_time" minutes)
+                if (diff_time == 0 or (diff_time > 0 and diff_time < ${max_skipped_time} and (current_time.timestamp - id(idLastCleaningTimes)) / 60 > ${max_skipped_time})) {
+                  ESP_LOGI("on_time", "%s time to turn on with '%s'", diff_time == 0 ? "Exact" : "Skipped", cleaning_times[i]->get_name().c_str());
+
+                  //Run the script "Scheduled cleaning"
+                  id(idScheduledCleaningScript).execute();
+
+                  //We remember the time of the last started cleaning and interrupt the cycle
+                  id(idLastCleaningTimes) = current_time.timestamp;
+                  
+                  //Interrupting the loop
+                  break;
+                }
+              }
