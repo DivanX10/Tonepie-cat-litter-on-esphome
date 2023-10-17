@@ -114,7 +114,7 @@ After uploading the firmware, solder ESP12-F instead of WBR3 and close the conta
   <summary><b>Home Assistant</b></summary>
   
 
-<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/7a338e83-c8a7-4242-aa44-fece33375e09" width=100%>
+<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/41bc0602-1d91-4eae-8f21-875333b625ee" width=100%>
 
 **For the card to work, you need to install components**
 * [History explorer card](https://github.com/alexarch21/history-explorer-card)
