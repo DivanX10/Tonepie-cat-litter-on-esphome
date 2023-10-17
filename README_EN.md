@@ -121,7 +121,7 @@ After uploading the firmware, solder ESP12-F instead of WBR3 and close the conta
 * [Button Card](https://github.com/custom-cards/button-card)
 
 **Card**
-* You can get the card code [here](https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/tree/main/files/ESPHome/en)
+* You can get the card code [here](https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/tree/main/files/Home%20Assistant/en)
   
 
 Countdown timer code. This is needed for the card to see the remaining operating time of the ionizer
