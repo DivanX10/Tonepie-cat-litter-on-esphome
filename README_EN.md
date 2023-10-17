@@ -6,7 +6,7 @@ Project for ESPHome and Home Assistant
 
 
 ### Description
-The Tonepie cat litter runs on Tuya, which can be upgraded to ESPHome. We decouple the tray from the Tuya cloud service and can program our tray as we see fit
+The [Tonepie cat litter](https://aliexpress.ru/item/1005005431174811.html) runs on Tuya, which can be upgraded to ESPHome. We decouple the tray from the Tuya cloud service and can program our tray as we see fit
 
 > Attention! All materials of this project (firmware, circuit diagrams, etc.) are provided "AS IS". Anything you do with your equipment is done at your own risk. The author is not responsible for the result and does not guarantee anything. Re-flashing the cat litter box requires intervention, which will automatically void your warranty.
 
