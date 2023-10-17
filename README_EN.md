@@ -84,7 +84,7 @@ There are two ways to upload firmware to the ESP12-F
 
 > For reference! To upload the firmware, you need to close the GPIO0, GPIO15 and GND contacts before power is applied (before you insert the USB-TTL into the computer's USB connector), and not after, then the ESP12-F will go into firmware mode
 
-Compile the firmware in ESPHome using the configuration of your choice. View configurations [here](https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/tree/main/files/ESPHome/ru)
+Compile the firmware in ESPHome using the configuration of your choice. View configurations [here](https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/tree/main/files/ESPHome/en)
 
 1) Basic configuration has only control and sensors without control logic
 2) The advanced configuration has control logic and statuses, and can also have a cleaning schedule. See comments in the configuration.
