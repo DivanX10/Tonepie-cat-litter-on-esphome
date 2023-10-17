@@ -1,0 +1,331 @@
+type: vertical-stack
+cards:
+  - type: vertical-stack
+    cards:
+      - square: false
+        columns: 1
+        type: grid
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:button-card
+                entity: sensor.cat_litter_tonepie_status
+                tap_action:
+                  action: call-service
+                  service: switch.toggle
+                  target:
+                    entity_id: switch.cat_litter_tonepie_manual_cleaning
+                hold_action:
+                  action: none
+                double_tap_action:
+                  action: none
+                state:
+                  - value: Calibration started
+                    name: Calibration started
+                    icon: mdi:scale-balance
+                    color: RED
+                  - value: Calibration complete
+                    name: Calibration complete
+                    icon: mdi:check-circle-outline
+                    color: GREEN
+                  - value: Pet in a tray
+                    name: Pet in a tray
+                    icon: mdi:cat
+                    color: DarkOrange
+                  - value: The pet is out
+                    name: The pet is out
+                    icon: mdi:home-export-outline
+                    color: GREEN
+                  - value: Cleaning has started
+                    name: Cleaning has started
+                    icon: mdi:broom
+                    color: SandyBrown
+                  - value: Pet in a tray. Cleaning suspended
+                    name: Pet in a tray <br> Cleaning suspended
+                    icon: mdi:cat
+                    color: RED
+                  - value: Pet in a tray. The ionizer is working
+                    name: Pet in a tray <br> The ionizer is working
+                    icon: mdi:cat
+                    color: SpringGreen
+                  - value: Cleaning has started
+                    name: Cleaning has started
+                    icon: mdi:broom
+                    color: SandyBrown
+                  - value: Cleaning is complete
+                    name: Cleaning is complete
+                    icon: mdi:check-circle-outline
+                    color: GREEN
+                  - value: Eliminate odor
+                    name: Eliminate odor
+                    icon: mdi:creation
+                    color: SpringGreen
+                  - value: The tray is clean
+                    name: The tray is clean
+                    icon: mdi:pine-tree
+                    color: GREEN
+                styles:
+                  card:
+                    - padding: 1%
+                    - color: ivory
+                    - font-size: 20px
+                    - height: 250px
+                  grid:
+                    - grid-template-areas: >-
+                        "i icon" "n icon" "n weight" "n visit_time" "n
+                        trash_can" 
+                    - grid-template-columns: lfr lf
+                    - grid-template-rows: lfr min-content min-content
+                  name:
+                    - font-size: 20px
+                    - color: BurlyWood
+                    - font-weight: bold
+                    - padding-bottom: 190px
+                    - justify-self: center
+                  img_cell:
+                    - justify-content: end
+                    - margin: none
+                    - margin-top: '-10%'
+                    - grid-row: 1 / span 6
+                  icon:
+                    - width: 300px
+                    - height: 160px
+                    - margin-top: 2%
+                    - top: 65px
+                  custom_fields:
+                    weight:
+                      - justify-self: center
+                      - margin-top: '-20%'
+                      - height: 70px
+                      - width: 150px
+                      - font-size: 16px
+                      - line-height: 20px
+                      - color: BurlyWood
+                    visit_time:
+                      - justify-self: center
+                      - margin-top: 1%
+                      - height: 70px
+                      - width: 150px
+                      - font-size: 16px
+                      - line-height: 20px
+                      - color: BurlyWood
+                    trash_can:
+                      - justify-self: center
+                      - margin-top: 5%
+                      - height: 80px
+                      - width: 150px
+                      - font-size: 16px
+                      - line-height: 20px
+                      - color: BurlyWood
+                custom_fields:
+                  weight: |
+                    [[[
+                      return `<ha-icon icon="mdi:weight-gram" style="width: 50px; height: 30px; color: SteelBlue;">
+                      </ha-icon><br>Cat Weight<br><span>${states['sensor.cat_litter_tonepie_cat_weight'].state}&nbsp;g</span><p>`
+                    ]]]
+                  visit_time: |
+                    [[[
+                      if (states['switch.cat_litter_tonepie_ionizer'].state == 'on')
+                      return  `<ha-icon icon="mdi:creation" style="width: 50px; height: 30px; color: #00FF7F;">
+                      </ha-icon><br>Ionizer<br><span>${states['sensor.cat_toilet_ionizer_remaining_time'].state}</span>`
+                      
+                      return  `<ha-icon icon="mdi:clock-outline" style="width: 50px; height: 30px; color: SteelBlue;">
+                      </ha-icon><br>Visit Time<br><span>${states['sensor.cat_litter_tonepie_visit_time'].state}</span>`
+                    ]]]    
+                  trash_can: |
+                    [[[
+                      if (states['binary_sensor.cat_litter_tonepie_trash_can'].state == 'off')
+                      return  `<ha-icon icon="mdi:trash-can-outline" style="width: 50px; height: 30px; color: SteelBlue;">
+                      </ha-icon><br>Trash Can<br><span>empty</span>`
+                      
+                      return  `<ha-icon icon="mdi:delete-empty" style="width: 50px; height: 30px; color: red;">
+                      </ha-icon><br>Trash Can<br><span>filled</span>`
+                    ]]]
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: input_boolean.cat_toilet_control_panel_1
+                tap_action:
+                  action: toggle
+                icon_color: yellow
+                name: Control
+                secondary_info: none
+                icon: mdi:menu
+                fill_container: false
+                layout: vertical
+              - type: custom:mushroom-entity-card
+                entity: input_boolean.cat_toilet_control_panel_2
+                name: Settings
+                tap_action:
+                  action: toggle
+                secondary_info: none
+                layout: vertical
+                icon: ''
+                icon_color: yellow
+              - type: custom:mushroom-entity-card
+                entity: input_boolean.cat_toilet_control_panel_3
+                name: Info
+                tap_action:
+                  action: toggle
+                secondary_info: none
+                layout: vertical
+                icon: ''
+                icon_color: yellow
+              - type: custom:mushroom-entity-card
+                entity: input_boolean.cat_toilet_control_panel_4
+                name: Charts
+                tap_action:
+                  action: toggle
+                secondary_info: none
+                layout: vertical
+                icon: ''
+                icon_color: yellow
+          - type: conditional
+            conditions:
+              - entity: input_boolean.cat_toilet_control_panel_1
+                state: 'on'
+            card:
+              type: entities
+              entities:
+                - entity: switch.cat_litter_tonepie_manual_cleaning
+                  secondary_info: last-changed
+                  name: Manual cleaning
+                - entity: switch.cat_litter_tonepie_autocleaning
+                  name: Auto cleaning
+                - entity: switch.cat_litter_tonepie_my_autocleaning
+                  name: My auto cleaning
+                - entity: switch.cat_litter_tonepie_auto_odor_purification
+                  name: Auto odor removal
+                - entity: switch.cat_litter_tonepie_ionizer
+                  name: Ionizer
+                - entity: switch.cat_litter_tonepie_infrared_sensor
+                  name: Infrared sensor
+                - entity: switch.cat_litter_tonepie_protection_from_children
+                  name: Child lock
+                - entity: switch.cat_litter_tonepie_remove_filler
+                  name: Remove filler
+          - type: conditional
+            conditions:
+              - entity: input_boolean.cat_toilet_control_panel_2
+                state: 'on'
+            card:
+              type: entities
+              entities:
+                - entity: number.cat_litter_tonepie_minimum_pet_weight
+                  name: Minimum pet weight
+                - entity: number.cat_litter_tonepie_detection_sensitivity
+                  name: Detection sensitivity
+                - entity: number.cat_litter_tonepie_launch_delay
+                  name: Start delay
+                - entity: number.cat_litter_tonepie_interval_between_cleaning
+                  name: Interval between cleanings
+                - entity: number.cat_litter_tonepie_calibration_of_filler
+                  name: Filler calibration
+                - entity: number.cat_litter_tonepie_calibration_of_the_waste_tank
+                  name: Waste tank calibration
+                - entity: number.cat_litter_tonepie_cleaning_time_01
+                  name: Cleaning time 1
+                - entity: number.cat_litter_tonepie_cleaning_time_02
+                  name: Cleaning time 2
+                - entity: number.cat_litter_tonepie_cleaning_time_03
+                  name: Cleaning time 3
+                - entity: number.cat_litter_tonepie_cleaning_time_04
+                  name: Cleaning time 4
+                - entity: number.cat_litter_tonepie_cleaning_time_05
+                  name: Cleaning time 5
+                - entity: number.cat_litter_tonepie_cleaning_time_06
+                  name: Cleaning time 6
+                - entity: number.cat_litter_tonepie_cleaning_time_07
+                  name: Cleaning time 7
+                - entity: number.cat_litter_tonepie_cleaning_time_08
+                  name: Cleaning time 8
+                - entity: number.cat_litter_tonepie_cleaning_time_09
+                  name: Cleaning time 9
+                - entity: number.cat_litter_tonepie_cleaning_time_10
+                  name: Cleaning time 10
+                - entity: number.cat_litter_tonepie_cleaning_time_11
+                  name: Cleaning time 11
+                - entity: number.cat_litter_tonepie_cleaning_time_12
+                  name: Cleaning time 12
+          - type: conditional
+            conditions:
+              - entity: input_boolean.cat_toilet_control_panel_3
+                state: 'on'
+            card:
+              type: entities
+              entities:
+                - entity: sensor.cat_litter_tonepie_status
+                  name: Status
+                  secondary_info: last-changed
+                - entity: sensor.cat_litter_tonepie_cat_weight
+                  secondary_info: last-changed
+                  name: Cat Weight
+                - entity: sensor.cat_litter_tonepie_visit_time
+                  secondary_info: last-changed
+                  name: Visit Time
+                - entity: binary_sensor.cat_litter_tonepie_trash_can
+                  name: Trash Can
+                - entity: binary_sensor.cat_litter_tonepie_pet_inside
+                  secondary_info: last-changed
+                  name: Pet Inside
+                - entity: binary_sensor.cat_litter_tonepie_cleaning
+                  secondary_info: last-changed
+                  name: Cleaning
+                - entity: sensor.cat_litter_tonepie_uptime
+                  name: Uptime
+                - entity: sensor.cat_litter_tonepie_ip
+                  name: IP
+                - entity: sensor.cat_litter_tonepie_esphome_version
+                  name: ESPHome Version
+          - type: conditional
+            conditions:
+              - entity: input_boolean.cat_toilet_control_panel_4
+                state: 'on'
+            card:
+              type: custom:history-explorer-card
+              header: Cat Litter
+              cardName: cat-litter-tonepie
+              lineMode: stepped
+              uiColors:
+                gridlines: '#F5FFFA'
+                labels: '#F5FFFA'
+                buttons: '#0000001f'
+                selector: rgba(255,255,255,255)
+                closeButton: '#0000001f'
+              lineGraphHeight: 300
+              barGraphHeight: 300
+              timelineBarHeight: 24
+              timelineBarSpacing: 30
+              showCurrentValues: true
+              refresh:
+                automatic: true
+                interval: 10
+              graphs:
+                - type: bar
+                  options:
+                    interval: hourly
+                  entities:
+                    - entity: sensor.cat_litter_tonepie_cat_weight
+                      name: Cat Weight
+                      width: 1
+                      scale: 1
+                      color: '#F4A460'
+                    - entity: sensor.cat_litter_tonepie_visit_time
+                      name: Visit Time
+                      width: 1
+                      scale: 1
+                      color: '#7FFF00'
+                    - entity: binary_sensor.cat_litter_tonepie_cleaning
+                      name: Cleaning
+                      width: 1
+                      scale: 1
+                      stateColors:
+                        'on': '#7CFC00'
+                        'off': '#FF4500'
+                    - entity: binary_sensor.cat_litter_tonepie_pet_inside
+                      name: Pet Inside
+                      width: 1
+                      scale: 1
+                      stateColors:
+                        'on': '#48D1CC'
+                        'off': '#FF4500'
