@@ -42,7 +42,7 @@ Before unsoldering the WBR3 chip, just in case, solder two wires to the RXD and 
 
 > For reference. Usually, in order to remove logs by connecting to the RXD and TXD contacts, the connection is made in reverse (screenshot below), but to my surprise the connection was direct, i.e. not RXD>TXD and TXD>RXD, but RXD>RXD and TXD>TXD. So check both options
 >
-> <img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/7361cdf6-ef66-4dec-8c91-2c80179d5288" width=30%>
+> <img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/4e467b16-b9f6-4b38-98c2-c75933cf316b" width=30%>
 
 
 <img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/00c2be8c-6beb-4407-bfe3-4b0f76afba76" width=50%>
@@ -79,7 +79,7 @@ There are two ways to upload firmware to the ESP12-F
 
 2) Connect ESP12-F to USB-TTL
 
-<img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/ddbf0afd-2b02-4627-a498-203b2f690b5d" width=100%>
+<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/a315b484-f4d5-4825-87fc-ad5907123a52" width=100%>
 
 
 > For reference! To upload the firmware, you need to close the GPIO0, GPIO15 and GND contacts before power is applied (before you insert the USB-TTL into the computer's USB connector), and not after, then the ESP12-F will go into firmware mode
@@ -103,8 +103,8 @@ After uploading the firmware, solder ESP12-F instead of WBR3 and close the conta
   <summary><b>Photos</b></summary>
 
 
-<img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/59bfd05d-251d-46b6-8d8a-bd20bc308e6a" width=70%>
-<img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/bb33698b-7d6d-4e1b-aa3a-07fe911ac01d" width=70%>
+<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/36d9dad1-bbee-40a6-aa9d-7b146dd29f74" width=70%>
+<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/43f824c1-45f6-4dd4-b888-1458b9763750" width=70%>
 <img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/69f1177d-d231-48a8-b179-60d68354fe74" width=70%>
 <img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/dabf01f8-466f-4d3c-899f-fc6344673bc6" width=70%>
   
@@ -154,7 +154,7 @@ You can download the model [here](https://github.com/DivanX10/Tonepie-cat-litter
 
 Protective removable rim for Tonepie automatic toilet tray
 
-<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/b82b7e5f-060f-4c00-8e14-f9b11a177923" width=40%>
+<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/c9bc4853-837a-440e-ab68-e0324e61e956" width=40%>
 
 ***
 
