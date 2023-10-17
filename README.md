@@ -112,6 +112,9 @@ uart:
 
 <details>
   <summary><b>Home Assistant</b></summary>
+  
+
+<img src="https://github.com/DivanX10/Tonepie-cat-litter-on-esphome/assets/64090632/7a338e83-c8a7-4242-aa44-fece33375e09" width=100%>
 
 **Для работы карточки необходимо установить компоненты**
 * [History explorer card](https://github.com/alexarch21/history-explorer-card)
@@ -137,14 +140,6 @@ timer:
           {{ '00:00:00' if f == None else (as_datetime(f) - now()).total_seconds() | timestamp_custom('%H:%M:%S', false) }}
       icon: mdi:timer
 ```
-
-
-
-**Скриншоты карточек**
-
-<img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/0404c168-b5fc-4901-932f-a62285006ae5" width=70%>
-<img src="https://github.com/DivanX10/tonepie-cat-litter-on-esphome/assets/64090632/a86725cf-4102-4e1c-a0f8-e4c97e32204f" width=70%>
-
 
 </details>
 
